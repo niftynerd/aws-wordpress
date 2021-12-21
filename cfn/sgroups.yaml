@@ -1,0 +1,71 @@
+Description: >
+  Security groups used by other ECS cluster and load balancer
+
+Parameters:
+  AppName:
+    Description: Prefix to resources
+    Type: String
+    Default: test
+
+  VPC:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC for security groups
+
+Resources:
+  ECSHostSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Access to the ECS hosts and the tasks/containers that run on them
+      SecurityGroupIngress:
+        # Only allow inbound access to ECS from the ELB
+        - SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+          IpProtocol: -1
+        # Allowing ssh for debugging
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${AppName}-ECS-Hosts
+
+  # Load balancer accessible from internet (0.0.0.0/0) 
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Access to the load balancer that sits in front of ECS
+      SecurityGroupIngress:
+        # Allow access from anywhere to our ECS services
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+      Tags:
+        - Key: Name
+          Value: !Sub ${AppName}-LoadBalancers
+
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Access to the RDS to only ECS instances
+      SecurityGroupIngress:
+        # Only allow inbound access to RDS from the ECS instsances
+        - SourceSecurityGroupId: !Ref ECSHostSecurityGroup
+          IpProtocol: -1
+      Tags:
+        - Key: Name
+          Value: !Sub ${AppName}-RDS
+
+Outputs:
+  ECSHostSecurityGroup:
+    Description: A reference to the security group for ECS hosts
+    Value: !Ref ECSHostSecurityGroup
+
+  LoadBalancerSecurityGroup:
+    Description: A reference to the security group for load balancers
+    Value: !Ref LoadBalancerSecurityGroup
+  
+  RDSSecurityGroup:
+    Description: A reference to the security group for RDS
+    Value: !Ref RDSSecurityGroup

@@ -1,0 +1,94 @@
+
+Description: >-
+  Mysql rds for app database
+  Is MultiAZ
+Parameters:
+  DBInstanceID:
+    Default: dbinstance
+    Description: My database instance
+    Type: String
+    MinLength: '1'
+    MaxLength: '63'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: >-
+      Must begin with a letter and must not end with a hyphen or contain two
+      consecutive hyphens.
+  DBName:
+    Default: mydb
+    Description: My database
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters.
+  DBInstanceClass:
+    Default: db.m5.large
+    Description: DB instance class
+    Type: String
+    ConstraintDescription: Must select a valid DB instance type.
+  DBAllocatedStorage:
+    Default: '50'
+    Description: The size of the database (GiB)
+    Type: Number
+    MinValue: '20'
+    MaxValue: '65536'
+    ConstraintDescription: must be between 20 and 65536 GiB.
+  DBUsername:
+    NoEcho: 'true'
+    Description: Username for MySQL database access
+    Type: String
+    MinLength: '1'
+    MaxLength: '16'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+  DBPassword:
+    NoEcho: 'true'
+    Description: Password MySQL database access
+    Type: String
+    MinLength: '8'
+    MaxLength: '41'
+    AllowedPattern: '[a-zA-Z0-9]*'
+    ConstraintDescription: must contain only alphanumeric characters.
+  PrivateSubnet1:
+    Description: Subnet for subnetgroup 1
+    Type: AWS::EC2::Subnet::Id
+  PrivateSubnet2:
+    Description: Subnet for subnetgroup 2
+    Type: AWS::EC2::Subnet::Id
+  SecurityGroup:
+    Description: Security Group for the RDS
+    Type: AWS::EC2::SecurityGroup::Id
+Resources:
+  DBSubnetGroup: 
+    Properties: 
+        DBSubnetGroupDescription: description
+        SubnetIds: 
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        Tags: 
+        - 
+            Key: String
+            Value: String
+    Type: "AWS::RDS::DBSubnetGroup"
+  MyDB:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBInstanceIdentifier: !Ref DBInstanceID
+      DBName: !Ref DBName
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref DBAllocatedStorage
+      Engine: mysql
+      EngineVersion: 8.0.23
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      MultiAZ: true # for high availability (could also do multi region failover for more cost)
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups: [!Ref SecurityGroup]
+
+      #MonitoringInterval: '60'
+      #MonitoringRoleArn: 'arn:aws:iam::123456789012:role/rds-monitoring-role'
+
+Outputs:
+  RDS:
+    Description: A reference to the rds
+    Value: !GetAtt MyDB.Endpoint.Address

@@ -1,0 +1,63 @@
+Description: >
+  Deploys an Application Load Balancer to access ECS service in public subnets
+
+Parameters:
+  AppName:
+    Description: Prefix to resources
+    Type: String
+    Default: test
+
+  VPC:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC for the Application Load Balancer
+
+  Subnets:
+    Description: Subnets for the Application Load Balancer 
+    Type: List<AWS::EC2::Subnet::Id>
+
+  SecurityGroup:
+    Description: Security Group for the Application Load Balancer
+    Type: AWS::EC2::SecurityGroup::Id
+
+Resources:
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Ref AppName
+      Subnets: !Ref Subnets
+      SecurityGroups:
+        - !Ref SecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Ref AppName
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80 # for simplicity, should ideally be https with valid certificate
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref DefaultTargetGroup
+
+  DefaultTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub ${AppName}-default
+      VpcId: !Ref VPC
+      Port: 80
+      Protocol: HTTP
+
+Outputs:
+  LoadBalancer:
+    Description: A reference to the Application Load Balancer
+    Value: !Ref LoadBalancer
+
+  LoadBalancerUrl:
+    Description: The URL of the ALB
+    Value: !GetAtt LoadBalancer.DNSName
+
+  Listener:
+    Description: A reference to a port 80 listener
+    Value: !Ref LoadBalancerListener
